@@ -4,7 +4,8 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { Metadata } from "next";
 import PropertyCard from "@/components/PropertyCard";
-import { listEstateProperties } from "@neup/logica/estate/property/list";
+import { getPropertyCardDetails } from "@/components/propertyCardDetails";
+import { listEstateListings } from "@neup/logica/estate/listings/list";
 import { getEnvVariable } from "@neup/core/helpers/env";
 import { logica } from "@neup/logica";
 import { ArrowRight, ShieldCheck, Scale, FileText, Search, Home as HomeIcon, Building } from "lucide-react";
@@ -12,8 +13,6 @@ import { ArrowRight, ShieldCheck, Scale, FileText, Search, Home as HomeIcon, Bui
 export const metadata: Metadata = {
   title: "Good Deal, #1 Real Estate Agency",
 };
-
-const GOODDEAL_AGENCY_ID = "e432db37-4d83-452e-bd89-d269fd9314e4";
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -28,14 +27,8 @@ function asText(value: unknown, fallback: string): string {
 }
 
 function formatPrice(property: Record<string, unknown>): string {
-  const pricing = Array.isArray(property.pricing) ? asRecord(property.pricing[0]) : asRecord(property.pricing);
-  const amount = typeof property.price === "number"
-    ? property.price
-    : typeof pricing.askingAmount === "number"
-      ? pricing.askingAmount
-      : typeof pricing.listed === "number"
-        ? pricing.listed
-        : null;
+  const price = asRecord(property.price);
+  const amount = typeof price.amount === "number" ? price.amount : null;
 
   if (amount === null) return "Price on request";
   if (amount >= 10_000_000) return `Rs. ${(amount / 10_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })} Cr`;
@@ -46,29 +39,29 @@ function formatPrice(property: Record<string, unknown>): string {
 export default async function Home() {
   const projectId = getEnvVariable("NEUP_SITES_PROJECT_ID", true);
   if (!projectId) throw new Error("NEUP_SITES_PROJECT_ID is required to load articles.");
-  const response = await listEstateProperties({
-    agencyId: GOODDEAL_AGENCY_ID,
-    fields: ["id", "slug", "title", "price", "pricing", "location", "purpose", "category", "type", "status", "images"],
+  const response = await listEstateListings({
+    filter: { status: "active" },
+    fields: ["id", "slug", "title", "price", "location", "purpose", "category", "types", "images", "area", "areaUnit", "listings.spacing", "listings.details"],
     limit: 15,
     offset: 0,
   });
-  const featuredProperties = response.ok && Array.isArray(response.body.properties)
-    ? response.body.properties.slice(-4).map((item) => {
+  const featuredProperties = response.ok && Array.isArray(response.body.listings)
+    ? response.body.listings.slice(-4).map((item) => {
         const property = asRecord(item);
+        const id = asText(property.id, "");
+        const slug = asText(property.slug, "property");
         const location = asRecord(property.location);
         const images = Array.isArray(property.images) ? property.images : [];
         const firstImage = images[0];
         return {
-          id: asText(property.id, asText(property.slug, "property")),
-          slug: asText(property.slug, asText(property.id, "")),
+          id: id || slug,
+          slug: `${slug}--${id}`,
           title: asText(property.title, "Property listing"),
           price: formatPrice(property),
           location: asText(property.location, asText(location.text, "Location available on request")),
-          purpose: asText(property.purpose, "Property"),
-          category: asText(property.category, "Listing"),
-          type: asText(property.type, "Real Estate"),
+          purpose: asText(property.purpose, ""),
+          details: getPropertyCardDetails(property),
           image: asText(firstImage, asText(asRecord(firstImage).url, "/hero.png")),
-          verified: asText(property.status, "ACTIVE").toUpperCase() === "ACTIVE",
         };
       })
     : [];

@@ -3,8 +3,8 @@ import Footer from "@/components/Footer";
 import PropertyGallery from "@/components/PropertyGallery";
 import SpaceAccessCards from "@/components/SpaceAccessCards";
 import type { SpaceAccessCard, SpaceAccessCardKind } from "@/components/SpaceAccessCards";
-import { listEstateProperties } from "@neup/logica/estate/property/list";
-import { viewEstateProperty } from "@neup/logica/estate/property/view";
+import { listEstateListings } from "@neup/logica/estate/listings/list";
+import { viewEstateListing } from "@neup/logica/estate/listings/view";
 import Image from "next/image";
 import Link from "next/link";
 import { Metadata } from "next";
@@ -25,7 +25,11 @@ interface PropertyDetailPageProps {
   }>;
 }
 
-const GOODDEAL_AGENCY_ID = "e432db37-4d83-452e-bd89-d269fd9314e4";
+
+// Extract the listing ID from the route's slug--id identifier.
+function getListingId(slug: string): string {
+  return slug.split("--").at(-1) || slug;
+}
 
 function humanizeKey(key: string): string {
   return key
@@ -140,16 +144,14 @@ function measurementCard(
 
 export async function generateMetadata({ params }: PropertyDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const response = await listEstateProperties({
-    agencyId: GOODDEAL_AGENCY_ID,
+  const response = await listEstateListings({
+    filter: { id: getListingId(slug), status: "active" },
     fields: ["id", "slug", "title"],
     limit: 15,
     offset: 0,
   });
-  const property = response.ok && Array.isArray(response.body.properties)
-    ? response.body.properties
-        .map(getRecord)
-        .find((item) => item.slug === slug || item.id === slug)
+  const property = response.ok && Array.isArray(response.body.listings)
+    ? response.body.listings.map(getRecord).find((item) => item.id === getListingId(slug))
     : undefined;
 
   return {
@@ -159,31 +161,30 @@ export async function generateMetadata({ params }: PropertyDetailPageProps): Pro
 
 export default async function PropertyDetailPage({ params }: PropertyDetailPageProps) {
   const { slug } = await params;
-  const listingResponse = await listEstateProperties({
-    agencyId: GOODDEAL_AGENCY_ID,
-    fields: ["id", "slug", "title", "description", "price", "pricing", "location", "purpose", "category", "type", "status", "images", "listingAgent", "agency"],
+  const listingId = getListingId(slug);
+  const listingResponse = await listEstateListings({
+    filter: { id: listingId, status: "active" },
+    fields: ["id", "slug", "title", "description", "price", "location", "purpose", "category", "types", "status", "images"],
     limit: 15,
     offset: 0,
   });
-  const listing = listingResponse.ok && Array.isArray(listingResponse.body.properties)
-    ? listingResponse.body.properties
-        .map(getRecord)
-        .find((item) => item.slug === slug || item.id === slug)
+  const listing = listingResponse.ok && Array.isArray(listingResponse.body.listings)
+    ? listingResponse.body.listings.map(getRecord).find((item) => item.id === listingId)
     : undefined;
 
   if (!listing) notFound();
 
-  const detailsResponse = await viewEstateProperty({
-    propertyId: typeof listing.id === "string" ? listing.id : slug,
-    fields: [
-      "id", "customId", "slug", "title", "description", "keywords", "tags", "purpose", "category", "type",
-      "status", "visibility", "images", "listedBy", "supportingAgents", "location", "pricing", "roadAccess",
-      "distance", "amenities", "property.details", "details", "createdAt", "updatedAt",
+  const detailsResponse = await viewEstateListing({
+    propertyId: typeof listing.id === "string" ? listing.id : listingId,
+    include: [
+      "id", "customId", "slug", "title", "description", "keywords", "tags", "purpose", "category", "types",
+      "status", "visibility", "images", "representatives.*", "location", "price", "pricing", "roadAccess",
+      "distance", "amenities", "listings.details", "details", "createdAt", "updatedAt",
     ],
   });
   const propertyData = {
     ...listing,
-    ...(detailsResponse.ok && detailsResponse.body.success ? getRecord(detailsResponse.body.property) : {}),
+    ...(detailsResponse.ok && detailsResponse.body.success ? getRecord(detailsResponse.body.listing) : {}),
   };
   const rawLocation = propertyData.location;
   const locationRecord = getRecord(rawLocation);
@@ -193,16 +194,9 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     const imageUrl = getRecord(item).url;
     return typeof imageUrl === "string" && imageUrl ? [imageUrl] : [];
   });
-  const pricing = Array.isArray(propertyData.pricing)
-    ? getRecord(propertyData.pricing[0])
-    : getRecord(propertyData.pricing);
-  const rawPrice = typeof propertyData.price === "number"
-    ? propertyData.price
-    : typeof pricing.askingAmount === "number"
-      ? pricing.askingAmount
-      : typeof pricing.listed === "number"
-        ? pricing.listed
-        : 0;
+  const rawPrice = typeof getRecord(propertyData.price).amount === "number"
+    ? getRecord(propertyData.price).amount as number
+    : 0;
   const price = rawPrice >= 10_000_000
     ? `Rs. ${(rawPrice / 10_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })} Cr`
     : rawPrice >= 100_000
@@ -210,15 +204,12 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
       : rawPrice > 0
         ? `Rs. ${rawPrice.toLocaleString("en-US")}`
         : "Price on request";
-  const listedByEntries = Array.isArray(propertyData.listedBy)
-    ? propertyData.listedBy
-    : [propertyData.listedBy];
-  const listedBy = listedByEntries.map(getRecord).find((item) => Object.keys(item).length > 0) ?? {};
-  const agency = getRecord(propertyData.agency);
+  const representatives = Array.isArray(propertyData.representatives) ? propertyData.representatives.map(getRecord) : [];
+  const listingAgent = representatives.find((item) => item.type === "agent");
   const property = {
     title: typeof propertyData.title === "string" ? propertyData.title : "Property listing",
     description: typeof propertyData.description === "string" ? propertyData.description : "",
-    type: formatDetailValue(propertyData.type) || "Real Estate",
+    type: formatDetailValue(propertyData.types) || "Real Estate",
     category: formatDetailValue(propertyData.category) || "Listing",
     purpose: formatDetailValue(propertyData.purpose) || "Property",
     location: typeof rawLocation === "string"
@@ -240,12 +231,8 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
     },
     details: getRecord(propertyData.details),
     agent: {
-      name: typeof listedBy.displayName === "string"
-        ? listedBy.displayName
-        : typeof agency.name === "string"
-          ? agency.name
-          : "Good Deal Advisory",
-      image: typeof listedBy.displayImage === "string" ? listedBy.displayImage : "/hero.png",
+      name: typeof listingAgent?.name === "string" ? listingAgent.name : "Good Deal Advisory",
+      image: typeof listingAgent?.image === "string" ? listingAgent.image : "/hero.png",
     },
   };
 

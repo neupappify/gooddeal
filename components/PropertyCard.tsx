@@ -1,18 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Building2, Home, Tag, CheckCircle } from "lucide-react";
+import { Bath, BedDouble, Ruler } from "lucide-react";
 import { cn } from "@neup/core/utils";
+import type { PropertyCardDetails } from "@/components/propertyCardDetails";
 
 interface PropertyCardProps {
   slug: string;
   title: string;
   price: string;
   location: string;
-  purpose: string;
-  category: string;
-  type: string;
   image: string;
-  verified?: boolean;
+  purpose: string;
+  details?: PropertyCardDetails;
   showAgent?: boolean;
   agent?: {
     name: string;
@@ -26,11 +25,9 @@ const PropertyCard = ({
   title,
   price,
   location,
-  purpose,
-  category,
-  type,
   image,
-  verified = false,
+  purpose,
+  details,
   showAgent = true,
   agent = {
     name: "Mukti Nath Nepal",
@@ -40,31 +37,28 @@ const PropertyCard = ({
 }: PropertyCardProps) => {
   return (
     <Link href={`/properties/${slug}`} className={cn("card-premium group overflow-hidden flex flex-col block", className)}>
-      <div className="relative aspect-[4/3] overflow-hidden bg-platinum">
+      <div className="relative aspect-[16/10] overflow-hidden bg-platinum">
         <Image
           src={image}
           alt={title}
           fill
           className="object-cover transition-transform duration-700 group-hover:scale-105"
         />
-        {verified && (
+        {purpose && (
           <div className="absolute top-4 left-4 z-10">
-            <span className="trust-badge shadow-md">
-              <CheckCircle className="w-3 h-3" />
-              Verified
-            </span>
+            <span className="trust-badge shadow-md">{purpose}</span>
           </div>
         )}
       </div>
 
-      <div className="p-6 flex flex-col flex-grow">
-        <div className="mb-4">
-          <p className="text-xl font-semibold text-russian-purple mb-2">{price}</p>
-          <h3 className="font-serif text-lg leading-tight text-charcoal group-hover:text-russian-purple transition-colors mb-2">
+      <div className="p-4 flex flex-col flex-grow">
+        <div className="mb-3">
+          <p className="text-xl font-semibold text-russian-purple mb-1.5">{price}</p>
+          <h3 className="font-serif text-sm leading-tight text-charcoal group-hover:text-russian-purple transition-colors mb-1.5">
             {title}
           </h3>
-          <p className="text-warm-gray text-sm mb-4">At {location}</p>
-          
+          <p className="text-warm-gray text-sm mb-1">At {location}</p>
+
           {showAgent && (
             <div className="flex items-center gap-2 pt-2">
               <div className="w-6 h-6 rounded-full overflow-hidden bg-platinum relative">
@@ -80,22 +74,13 @@ const PropertyCard = ({
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-platinum mt-auto">
-          <div className="flex items-center gap-4 text-sm text-charcoal/80">
-            <div className="flex items-center gap-1.5" title="Listing purpose">
-              <Tag className="w-4 h-4 text-warm-gray" />
-              <span>{purpose}</span>
-            </div>
-            <div className="flex items-center gap-1.5" title="Property category">
-              <Home className="w-4 h-4 text-warm-gray" />
-              <span>{category}</span>
-            </div>
-            <div className="flex items-center gap-1.5" title="Property type">
-              <Building2 className="w-4 h-4 text-warm-gray" />
-              <span>{type}</span>
-            </div>
+        {(details?.bedrooms || details?.bathrooms || details?.area) && (
+          <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-sm text-charcoal/80">
+            {details.bedrooms && <span className="inline-flex items-center gap-1.5"><BedDouble className="h-4 w-4 text-warm-gray" />{details.bedrooms} beds</span>}
+            {details.bathrooms && <span className="inline-flex items-center gap-1.5"><Bath className="h-4 w-4 text-warm-gray" />{details.bathrooms} baths</span>}
+            {details.area && <span className="inline-flex items-center gap-1.5"><Ruler className="h-4 w-4 text-warm-gray" />{details.area}</span>}
           </div>
-        </div>
+        )}
       </div>
     </Link>
   );
