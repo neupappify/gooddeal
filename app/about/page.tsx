@@ -15,7 +15,6 @@ export default async function AboutPage() {
   const projectId = getEnvVariable("NEUP_SITES_PROJECT_ID", true);
   if (!projectId) throw new Error("NEUP_SITES_PROJECT_ID is required to load team members.");
   const response = await members(projectId);
-  console.info("[people] members response:", response);
   const teamMembers = response.ok && response.body.success && Array.isArray(response.body.data)
     ? response.body.data
     : [];

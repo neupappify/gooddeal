@@ -4,7 +4,6 @@ import PropertyGallery from "@/components/PropertyGallery";
 import PropertyInquiryForm from "@/components/PropertyInquiryForm";
 import SpaceAccessCards from "@/components/SpaceAccessCards";
 import type { SpaceAccessCard, SpaceAccessCardKind } from "@/components/SpaceAccessCards";
-import { listEstateListings } from "@neup/logica/estate/listings/list";
 import { viewEstateListing } from "@neup/logica/estate/listings/view";
 import Image from "next/image";
 import Link from "next/link";
@@ -140,14 +139,12 @@ function measurementCard(
 
 export async function generateMetadata({ params }: PropertyDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const response = await listEstateListings({
-    filter: { slug, status: "active" },
-    fields: ["slug", "title"],
-    limit: 15,
-    offset: 0,
+  const response = await viewEstateListing({
+    slug,
+    include: ["slug", "title"],
   });
-  const property = response.ok && Array.isArray(response.body.listings)
-    ? response.body.listings.map(getRecord).find((item) => item.slug === slug)
+  const property = response.ok && response.body.success
+    ? getRecord(response.body.listing)
     : undefined;
 
   return {
@@ -157,30 +154,21 @@ export async function generateMetadata({ params }: PropertyDetailPageProps): Pro
 
 export default async function PropertyDetailPage({ params }: PropertyDetailPageProps) {
   const { slug } = await params;
-  const listingResponse = await listEstateListings({
-    filter: { slug, status: "active" },
-    fields: ["slug", "title", "description", "price", "location", "purpose", "category", "types", "status", "images"],
-    limit: 15,
-    offset: 0,
+  const detailsResponse = await viewEstateListing({
+    slug,
+    include: [
+      "customId", "slug", "title", "description", "keywords", "tags", "purpose", "category", "types",
+      "status", "visibility", "images", "representatives.agents", "representatives.*", "location", "price", "pricing", "roadAccess",
+      "distance", "amenities", "listings.details", "details", "createdAt", "updatedAt",
+    ],
   });
-  const listing = listingResponse.ok && Array.isArray(listingResponse.body.listings)
-    ? listingResponse.body.listings.map(getRecord).find((item) => item.slug === slug)
+  const listing = detailsResponse.ok && detailsResponse.body.success
+    ? getRecord(detailsResponse.body.listing)
     : undefined;
 
   if (!listing) notFound();
 
-  const detailsResponse = await viewEstateListing({
-    propertySlug: typeof listing.slug === "string" ? listing.slug : slug,
-    include: [
-      "customId", "slug", "title", "description", "keywords", "tags", "purpose", "category", "types",
-      "status", "visibility", "images", "representatives.*", "location", "price", "pricing", "roadAccess",
-      "distance", "amenities", "listings.details", "details", "createdAt", "updatedAt",
-    ],
-  });
-  const propertyData = {
-    ...listing,
-    ...(detailsResponse.ok && detailsResponse.body.success ? getRecord(detailsResponse.body.listing) : {}),
-  };
+  const propertyData = listing;
   const rawLocation = propertyData.location;
   const locationRecord = getRecord(rawLocation);
   const rawImages = Array.isArray(propertyData.images) ? propertyData.images : [];
@@ -200,7 +188,18 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
         ? `Rs. ${rawPrice.toLocaleString("en-US")}`
         : "Price on request";
   const representatives = Array.isArray(propertyData.representatives) ? propertyData.representatives.map(getRecord) : [];
-  const listingAgent = representatives.find((item) => item.type === "agent");
+  const listingRepresentative = representatives.find((item) =>
+    item.type === "agent" && item.role === "listingOwner",
+  ) ?? representatives.find((item) => item.type === "agent")
+    ?? representatives.find((item) => item.type === "agency")
+    ?? representatives.find((item) => item.type === "listingOwner");
+  const representativeLabel = listingRepresentative?.type === "agency"
+    ? "Agency"
+    : listingRepresentative?.type === "agent"
+      ? listingRepresentative.role === "supportingAgent" ? "Supporting agent" : "Listing agent"
+      : listingRepresentative?.type === "listingOwner"
+        ? "Listing owner"
+        : undefined;
   const property = {
     title: typeof propertyData.title === "string" ? propertyData.title : "Property listing",
     description: typeof propertyData.description === "string" ? propertyData.description : "",
@@ -225,10 +224,16 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
       roadType: typeof getRecord(propertyData.roadAccess).roadType === "string" ? getRecord(propertyData.roadAccess).roadType as string : "",
     },
     details: getRecord(propertyData.details),
-    agent: {
-      name: typeof listingAgent?.name === "string" ? listingAgent.name : "Good Deal Advisory",
-      image: typeof listingAgent?.image === "string" ? listingAgent.image : "/hero.png",
-    },
+    representative: listingRepresentative ? {
+      id: typeof listingRepresentative.id === "string" ? listingRepresentative.id : undefined,
+      label: representativeLabel,
+      name: typeof listingRepresentative.name === "string" && listingRepresentative.name.trim()
+        ? listingRepresentative.name
+        : undefined,
+      image: typeof listingRepresentative.image === "string" && listingRepresentative.image.trim()
+        ? listingRepresentative.image
+        : undefined,
+    } : undefined,
   };
 
   const description = property.description || `${property.title} is a ${property.type.toLowerCase()} ${property.category.toLowerCase()} listed for ${property.purpose.toLowerCase()} in ${property.location}. Contact Good Deal Advisory for viewing, verification, and transaction guidance.`;
@@ -375,27 +380,25 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
               <div className="relative">
                 <div className="sticky top-28 overflow-hidden rounded-3xl border border-russian-purple/10 bg-white shadow-[0_24px_70px_rgba(50,23,77,0.14)]">
                   <div className="bg-russian-purple px-6 py-5 text-white md:px-7">
-                    <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Good Deal Advisory</div>
+                    {property.representative?.name && <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/60">{property.representative.name}</div>}
                     <h3 className="text-xl font-semibold text-white">Make this your next move</h3>
                     <p className="mt-1 text-sm text-white/70">Get verified details and arrange a private viewing.</p>
                   </div>
                   <div className="p-6 md:p-7">
-                  <div className="mb-6 flex items-center gap-4 rounded-lg bg-platinum/30 p-4">
-                    <div className="relative h-14 w-14 overflow-hidden rounded-full bg-platinum">
+                  {property.representative && (property.representative.image || property.representative.name) && <div className="mb-6 flex items-center gap-4 rounded-lg bg-platinum/30 p-4">
+                    {property.representative.image && <div className="relative h-14 w-14 overflow-hidden rounded-lg border border-russian-purple/25 bg-platinum ring-2 ring-russian-purple/5">
                       <Image
-                        src={property.agent.image}
-                        alt={property.agent.name}
+                        src={property.representative.image}
+                        alt={property.representative.name ?? "Listing representative"}
                         fill
                         className="object-cover"
                       />
-                    </div>
+                    </div>}
                     <div>
-                      <div className="text-xs text-warm-gray">Listed by</div>
-                      <div className="font-medium text-charcoal">{property.agent.name}</div>
+                      {property.representative.name && <div className="font-medium text-charcoal">{property.representative.name}</div>}
+                      {property.representative.label && <div className="mt-0.5 text-xs text-warm-gray">{property.representative.label}</div>}
                     </div>
-                  </div>
-                  <div className="mb-7 rounded-2xl bg-[#fbfafc] p-4 text-sm leading-6 text-warm-gray">Our advisory team will accompany you and provide a full briefing before you take the next step.</div>
-                  
+                  </div>}
                   <PropertyInquiryForm slug={slug} />
 
                   <div className="mt-8 pt-8 border-t border-platinum flex flex-col gap-4">

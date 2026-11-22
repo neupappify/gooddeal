@@ -13,7 +13,6 @@ export default async function CareersPage() {
   const projectId = getEnvVariable("NEUP_SITES_PROJECT_ID", true);
   if (!projectId) throw new Error("NEUP_SITES_PROJECT_ID is required to load careers.");
   const response = await careers(projectId);
-  console.info("[people] careers response:", response);
   const openPositions = response.ok && response.body.success && Array.isArray(response.body.data)
     ? response.body.data
     : [];

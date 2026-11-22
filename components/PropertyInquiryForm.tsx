@@ -30,13 +30,6 @@ export default function PropertyInquiryForm({ slug }: PropertyInquiryFormProps) 
         message: String(formData.get("message") ?? "").trim(),
       });
 
-      console.info("[property-inquiry] Logica inquiry API response", {
-        ok: response.ok,
-        status: response.status,
-        body: response.body,
-        headers: Object.fromEntries(response.headers.entries()),
-      });
-
       if (!response.ok) {
         setMessage("We couldn’t send your request. Please try again.");
         return;
@@ -45,11 +38,7 @@ export default function PropertyInquiryForm({ slug }: PropertyInquiryFormProps) 
       setIsSuccess(true);
       setMessage("Your viewing request has been sent. Our team will contact you soon.");
       form.reset();
-    } catch (error) {
-      const details = error instanceof Error
-        ? { name: error.name, message: error.message, stack: error.stack }
-        : { value: error };
-      console.warn("[property-inquiry] Inquiry API threw an error", details);
+    } catch {
       setMessage("We couldn’t send your request. Please try again.");
     } finally {
       setIsSubmitting(false);

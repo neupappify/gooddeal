@@ -59,7 +59,6 @@ export async function generateStaticParams() {
 export default async function TeamMemberPage({ params }: TeamMemberPageProps) {
   const { slug } = await params;
   const response = await members(getProjectId());
-  console.info("[people] members response:", response);
   const member = response.ok && response.body.success && Array.isArray(response.body.data)
     ? response.body.data.find((item) => item.slug === slug)
     : undefined;
