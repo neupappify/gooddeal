@@ -32,22 +32,20 @@ export default async function Home() {
   if (!projectId) throw new Error("NEUP_SITES_PROJECT_ID is required to load articles.");
   const response = await listEstateListings({
     filter: { status: "active" },
-    fields: ["id", "slug", "title", "price", "location", "purpose", "category", "types", "images", "area", "areaUnit", "listings.spacing", "listings.details"],
+    fields: ["slug", "title", "price", "location", "purpose", "category", "types", "images", "area", "areaUnit", "listings.spacing", "listings.details"],
     limit: 15,
     offset: 0,
   });
   const featuredProperties = response.ok && Array.isArray(response.body.listings)
     ? response.body.listings.slice(-4).map((item) => {
         const property = asRecord(item);
-        const id = asText(property.id, "");
         const slug = asText(property.slug, "property");
         const location = asRecord(property.location);
         const priceAmount = asRecord(property.price).amount;
         const images = Array.isArray(property.images) ? property.images : [];
         const firstImage = images[0];
         return {
-          id: id || slug,
-          slug: `${slug}--${id}`,
+          slug,
           title: asText(property.title, "Property listing"),
           price: formatListingPrice(typeof priceAmount === "number" ? priceAmount : null),
           location: asText(property.location, asText(location.text, "Location available on request")),
@@ -171,7 +169,7 @@ export default async function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {featuredProperties.map((prop) => (
-                <PropertyCard key={prop.id} {...prop} showAgent={false} className="h-full" />
+                <PropertyCard key={prop.slug} {...prop} showAgent={false} className="h-full" />
               ))}
             </div>
             {featuredProperties.length === 0 && (

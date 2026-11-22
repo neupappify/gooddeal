@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PropertyGallery from "@/components/PropertyGallery";
+import PropertyInquiryForm from "@/components/PropertyInquiryForm";
 import SpaceAccessCards from "@/components/SpaceAccessCards";
 import type { SpaceAccessCard, SpaceAccessCardKind } from "@/components/SpaceAccessCards";
 import { listEstateListings } from "@neup/logica/estate/listings/list";
@@ -25,11 +26,6 @@ interface PropertyDetailPageProps {
   }>;
 }
 
-
-// Extract the listing ID from the route's slug--id identifier.
-function getListingId(slug: string): string {
-  return slug.split("--").at(-1) || slug;
-}
 
 function humanizeKey(key: string): string {
   return key
@@ -145,13 +141,13 @@ function measurementCard(
 export async function generateMetadata({ params }: PropertyDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
   const response = await listEstateListings({
-    filter: { id: getListingId(slug), status: "active" },
-    fields: ["id", "slug", "title"],
+    filter: { slug, status: "active" },
+    fields: ["slug", "title"],
     limit: 15,
     offset: 0,
   });
   const property = response.ok && Array.isArray(response.body.listings)
-    ? response.body.listings.map(getRecord).find((item) => item.id === getListingId(slug))
+    ? response.body.listings.map(getRecord).find((item) => item.slug === slug)
     : undefined;
 
   return {
@@ -161,23 +157,22 @@ export async function generateMetadata({ params }: PropertyDetailPageProps): Pro
 
 export default async function PropertyDetailPage({ params }: PropertyDetailPageProps) {
   const { slug } = await params;
-  const listingId = getListingId(slug);
   const listingResponse = await listEstateListings({
-    filter: { id: listingId, status: "active" },
-    fields: ["id", "slug", "title", "description", "price", "location", "purpose", "category", "types", "status", "images"],
+    filter: { slug, status: "active" },
+    fields: ["slug", "title", "description", "price", "location", "purpose", "category", "types", "status", "images"],
     limit: 15,
     offset: 0,
   });
   const listing = listingResponse.ok && Array.isArray(listingResponse.body.listings)
-    ? listingResponse.body.listings.map(getRecord).find((item) => item.id === listingId)
+    ? listingResponse.body.listings.map(getRecord).find((item) => item.slug === slug)
     : undefined;
 
   if (!listing) notFound();
 
   const detailsResponse = await viewEstateListing({
-    propertyId: typeof listing.id === "string" ? listing.id : listingId,
+    propertySlug: typeof listing.slug === "string" ? listing.slug : slug,
     include: [
-      "id", "customId", "slug", "title", "description", "keywords", "tags", "purpose", "category", "types",
+      "customId", "slug", "title", "description", "keywords", "tags", "purpose", "category", "types",
       "status", "visibility", "images", "representatives.*", "location", "price", "pricing", "roadAccess",
       "distance", "amenities", "listings.details", "details", "createdAt", "updatedAt",
     ],
@@ -401,24 +396,7 @@ export default async function PropertyDetailPage({ params }: PropertyDetailPageP
                   </div>
                   <div className="mb-7 rounded-2xl bg-[#fbfafc] p-4 text-sm leading-6 text-warm-gray">Our advisory team will accompany you and provide a full briefing before you take the next step.</div>
                   
-                  <form className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-medium text-charcoal uppercase tracking-wider mb-2">Full Name</label>
-                      <input type="text" className="w-full bg-platinum/30 border border-platinum rounded px-4 py-3 text-sm focus:outline-none focus:border-russian-purple transition-colors" placeholder="John Doe" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-charcoal uppercase tracking-wider mb-2">Phone Number</label>
-                      <input type="tel" className="w-full bg-platinum/30 border border-platinum rounded px-4 py-3 text-sm focus:outline-none focus:border-russian-purple transition-colors" placeholder="+977 984 0518336" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-charcoal uppercase tracking-wider mb-2">Message</label>
-                      <textarea className="w-full bg-platinum/30 border border-platinum rounded px-4 py-3 text-sm focus:outline-none focus:border-russian-purple transition-colors h-24 resize-none" placeholder="I would like to view this property..." />
-                    </div>
-                    
-                    <button className="mt-2 w-full rounded-xl bg-russian-purple px-6 py-3.5 font-semibold text-white shadow-lg shadow-russian-purple/20 transition hover:bg-[#251138]">
-                      Request a viewing
-                    </button>
-                  </form>
+                  <PropertyInquiryForm slug={slug} />
 
                   <div className="mt-8 pt-8 border-t border-platinum flex flex-col gap-4">
                     <div className="flex items-center gap-4">

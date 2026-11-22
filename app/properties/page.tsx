@@ -39,7 +39,7 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
   const response = await listEstateListings({
     agencyId: GOODDEAL_AGENCY_ID,
     filter: { status: "active", ...(searchTerm ? { searchTerm } : {}) },
-    fields: ["id", "slug", "title", "price", "location", "purpose", "category", "types", "images", "area", "areaUnit", "listings.spacing", "listings.details"],
+    fields: ["slug", "title", "price", "location", "purpose", "category", "types", "images", "area", "areaUnit", "listings.spacing", "listings.details"],
     limit: LISTINGS_PER_PAGE,
     offset,
   });
@@ -65,13 +65,11 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
           : firstImage && typeof firstImage === "object" && "url" in firstImage && typeof firstImage.url === "string"
             ? firstImage.url
             : "/hero.png";
-        const id = typeof property.id === "string" ? property.id : "";
         const propertySlug = typeof property.slug === "string" ? property.slug : "property";
-        if (!id) return [];
+        if (!propertySlug) return [];
 
         return [{
-          id,
-          slug: `${propertySlug}--${id}`,
+          slug: propertySlug,
           title: typeof property.title === "string" && property.title.trim()
             ? property.title
             : "Property listing",
@@ -132,7 +130,7 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
             {properties.length > 0 ? (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {properties.map((property) => (
-                  <PropertyCard key={property.id} {...property} showAgent={false} className="h-full" />
+                  <PropertyCard key={property.slug} {...property} showAgent={false} className="h-full" />
                 ))}
               </div>
             ) : (
