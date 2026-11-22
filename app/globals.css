@@ -56,6 +56,10 @@
     font-size: clamp(1.15rem, 1.8vw, 1.35rem) !important;
   }
 
+  .property-card-title {
+    font-size: 16px !important;
+  }
+
   p[class~="text-lg"] {
     font-size: 0.95rem !important;
   }

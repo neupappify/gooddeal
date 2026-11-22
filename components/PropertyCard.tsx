@@ -36,7 +36,7 @@ const PropertyCard = ({
   className,
 }: PropertyCardProps) => {
   return (
-    <Link href={`/properties/${slug}`} className={cn("card-premium group overflow-hidden flex flex-col block", className)}>
+    <Link href={`/properties/${slug}`} className={cn("card-premium group h-full overflow-hidden flex flex-col", className)}>
       <div className="relative aspect-[16/10] overflow-hidden bg-platinum">
         <Image
           src={image}
@@ -52,12 +52,12 @@ const PropertyCard = ({
       </div>
 
       <div className="p-4 flex flex-col flex-grow">
-        <div className="mb-3">
+        <div className="mb-1">
           <p className="text-xl font-semibold text-russian-purple mb-1.5">{price}</p>
-          <h3 className="font-serif text-sm leading-tight text-charcoal group-hover:text-russian-purple transition-colors mb-1.5">
+          <h3 className="property-card-title font-serif leading-tight text-charcoal group-hover:text-russian-purple transition-colors mb-1.5">
             {title}
           </h3>
-          <p className="text-warm-gray text-sm mb-1">At {location}</p>
+          <p className="mb-1 pb-2 text-sm text-warm-gray">At {location}</p>
 
           {showAgent && (
             <div className="flex items-center gap-2 pt-2">
@@ -75,7 +75,7 @@ const PropertyCard = ({
         </div>
 
         {(details?.bedrooms || details?.bathrooms || details?.area) && (
-          <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-sm text-charcoal/80">
+          <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-platinum pt-2 text-sm text-charcoal/80">
             {details.bedrooms && <span className="inline-flex items-center gap-1.5"><BedDouble className="h-4 w-4 text-warm-gray" />{details.bedrooms} beds</span>}
             {details.bathrooms && <span className="inline-flex items-center gap-1.5"><Bath className="h-4 w-4 text-warm-gray" />{details.bathrooms} baths</span>}
             {details.area && <span className="inline-flex items-center gap-1.5"><Ruler className="h-4 w-4 text-warm-gray" />{details.area}</span>}

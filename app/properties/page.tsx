@@ -2,6 +2,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PropertyCard from "@/components/PropertyCard";
 import { getPropertyCardDetails } from "@/components/propertyCardDetails";
+import { formatListingPrice } from "@/components/formatListingPrice";
 import Link from "next/link";
 import { listEstateListings } from "@neup/logica/estate/listings/list";
 import { Search } from "lucide-react";
@@ -50,13 +51,7 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
           ? property.price as Record<string, unknown>
           : {};
         const amount = typeof priceRecord.amount === "number" ? priceRecord.amount : null;
-        const price = amount === null
-          ? "Price on request"
-          : amount >= 10_000_000
-            ? `Rs. ${(amount / 10_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })} Cr`
-            : amount >= 100_000
-              ? `Rs. ${(amount / 100_000).toLocaleString("en-US", { maximumFractionDigits: 2 })} Lakh`
-              : `Rs. ${amount.toLocaleString("en-US")}`;
+        const price = formatListingPrice(amount);
         const location = property.location;
         const locationText = typeof location === "string"
           ? location

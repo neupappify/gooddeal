@@ -4,6 +4,7 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { Metadata } from "next";
 import PropertyCard from "@/components/PropertyCard";
+import { formatListingPrice } from "@/components/formatListingPrice";
 import { getPropertyCardDetails } from "@/components/propertyCardDetails";
 import { listEstateListings } from "@neup/logica/estate/listings/list";
 import { getEnvVariable } from "@neup/core/helpers/env";
@@ -26,16 +27,6 @@ function asText(value: unknown, fallback: string): string {
   return fallback;
 }
 
-function formatPrice(property: Record<string, unknown>): string {
-  const price = asRecord(property.price);
-  const amount = typeof price.amount === "number" ? price.amount : null;
-
-  if (amount === null) return "Price on request";
-  if (amount >= 10_000_000) return `Rs. ${(amount / 10_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })} Cr`;
-  if (amount >= 100_000) return `Rs. ${(amount / 100_000).toLocaleString("en-US", { maximumFractionDigits: 2 })} Lakh`;
-  return `Rs. ${amount.toLocaleString("en-US")}`;
-}
-
 export default async function Home() {
   const projectId = getEnvVariable("NEUP_SITES_PROJECT_ID", true);
   if (!projectId) throw new Error("NEUP_SITES_PROJECT_ID is required to load articles.");
@@ -51,13 +42,14 @@ export default async function Home() {
         const id = asText(property.id, "");
         const slug = asText(property.slug, "property");
         const location = asRecord(property.location);
+        const priceAmount = asRecord(property.price).amount;
         const images = Array.isArray(property.images) ? property.images : [];
         const firstImage = images[0];
         return {
           id: id || slug,
           slug: `${slug}--${id}`,
           title: asText(property.title, "Property listing"),
-          price: formatPrice(property),
+          price: formatListingPrice(typeof priceAmount === "number" ? priceAmount : null),
           location: asText(property.location, asText(location.text, "Location available on request")),
           purpose: asText(property.purpose, ""),
           details: getPropertyCardDetails(property),
@@ -179,7 +171,7 @@ export default async function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {featuredProperties.map((prop) => (
-                <PropertyCard key={prop.id} {...prop} showAgent={false} />
+                <PropertyCard key={prop.id} {...prop} showAgent={false} className="h-full" />
               ))}
             </div>
             {featuredProperties.length === 0 && (
